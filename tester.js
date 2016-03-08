@@ -1,7 +1,9 @@
 function createTester() {
   'use strict';
 
-  var pouch = new PouchDB('pouch_test');
+  var pouch  = new PouchDB('pouch_test');
+  var pouchP = new PouchDB('pouch_test2', { revs_limit: 1 });
+  var pouchB = new PouchDB('pouch_test3', { revs_limit: 1 });
   var pouchWebSQL = new PouchDB('pouch_test_websql', {adapter: 'websql'});
   var lokiDB = new loki.Collection('loki_test', {indices: ['id']});
   var dexieDB = new Dexie('dexie_test');
@@ -105,6 +107,30 @@ function createTester() {
       promise = promise.then(addDoc(i));
     }
     return promise;
+  }
+
+  function pouchBTest(docs) {
+    var bulk = []
+    for (var i = 0; i < docs.length; i++) {
+      bulk.push({
+        _id: 'doc_'+i,
+        data: Math.random(),
+      })
+    }
+    return pouchB.bulkDocs(bulk)
+  }
+
+  function pouchPTest(docs) {
+    function addDoc(i) {
+      var doc = docs[i];
+      doc._id = 'doc_' + i;
+      return pouchP.put(doc);
+    }
+    var promises = []
+    for (var i = 0; i < docs.length; i++) {
+      promises.push(addDoc(i))
+    }
+    return Promise.all(promises)
   }
 
   function pouchWebSQLTest(docs) {
@@ -253,6 +279,10 @@ function createTester() {
         return localStorageTest;
       case 'pouch':
         return pouchTest;
+      case 'pouchp':
+        return pouchPTest;
+      case 'pouchb':
+        return pouchBTest;
       case 'pouchWebSQL':
         return pouchWebSQLTest;
       case 'loki':
@@ -332,6 +362,12 @@ function createTester() {
       }),
       pouch.destroy().then(function () {
         pouch = new PouchDB('pouch_test');
+      }),
+      pouchP.destroy().then(function () {
+        pouchP = new PouchDB('pouch_test2', { revs_limit: 1 });
+      }),
+      pouchB.destroy().then(function () {
+        pouchB = new PouchDB('pouch_test3', { revs_limit: 1 });
       }),
       Promise.resolve().then(function () {
         if (!pouchWebSQL.adapter) {
